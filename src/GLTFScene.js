@@ -29,7 +29,7 @@ export class GLTFSceneManager {
         this.diceAlphaTexture = null;
 
         //Позиция дайсов
-        this.redDice = 4;
+        this.redDice = 1;
         this.yellowDice = 1;
 
         this._init();
@@ -94,9 +94,44 @@ export class GLTFSceneManager {
                     node.receiveShadow = true;
                 }
             });
+
+           // ==========================================================
+            // НАЗНАЧАЕМ ЦВЕТА
+            // ==========================================================
+            // Создаем материалы
+            const yellowMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Желтый
+            const redMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });   // Красный
+
+            // Находим объекты по имени
+            const dice1 = this.model.getObjectByName("Dice_1");
+            const dice2 = this.model.getObjectByName("Dice_2");
+            
+            // Применяем желтый материал ко всем мешам внутри объекта "Dice_1"
+            if (dice1) {
+                dice1.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = yellowMaterial;
+                    }
+                });
+            } else {
+                console.warn('Объект "Dice_1" не найден в GLTF модели.');
+            }
+
+            // Применяем красный материал ко всем мешам внутри объекта "Dice_2"
+            if (dice2) {
+                dice2.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = redMaterial;
+                    }
+                });
+            } else {
+                 console.warn('Объект "Dice_2" не найден в GLTF модели.');
+            }
+            // ==========================================================
+            
             this.scene.add(this.model);
 
-            // ИСПРАВЛЕНО: Удалены строки, которые неудачно переопределяли позицию камеры.
+           
             // Начальная настройка камеры теперь является основной.
             
             if (gltf.animations && gltf.animations.length) {
@@ -110,7 +145,7 @@ export class GLTFSceneManager {
 
         const textureLoader = new THREE.TextureLoader(loadingManager);
         
-        textureLoader.load('dice-eges2.jpg', (texture) => {
+        textureLoader.load('dice-eges.jpg', (texture) => {
             this.diceAtlasTexture = texture;
             this.diceAtlasTexture.magFilter = THREE.NearestFilter;
         });
@@ -143,6 +178,28 @@ export class GLTFSceneManager {
         //if (this.controls) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
+
+    _clearWrappers() {
+        for (const item of this.trackedObjects) {
+            // Удаляем обертку из сцены
+            this.scene.remove(item.wrapper);
+            // Очищаем геометрию и материалы для предотвращения утечек памяти
+            item.wrapper.traverse((object) => {
+                if (object.isMesh) {
+                    if (object.geometry) object.geometry.dispose();
+                    if (object.material) {
+                        if (object.material.map) object.material.map.dispose();
+                        if (object.material.alphaMap) object.material.alphaMap.dispose();
+                        object.material.dispose();
+                    }
+                }
+            });
+        }
+        // Опустошаем массив
+        this.trackedObjects = [];
+        console.log("Старые обертки удалены.");
+    }
+
 
     createWrapper(objectNameToFollow, diceEge) {
         console.log(diceEge)
@@ -188,7 +245,7 @@ export class GLTFSceneManager {
             });
         };
 
-        let sTMP = 0.22;
+        let sTMP = 0.203;
 
         const frontFace = new THREE.Mesh(new THREE.PlaneGeometry(sTMP, sTMP), createFace(2));
         frontFace.position.z = sTMP / 2;
@@ -221,9 +278,10 @@ export class GLTFSceneManager {
 
         // Создаем матрицу для нашего начального вращения
         const initialRotationMatrix = new THREE.Matrix4();
+        
         // Создаем Эйлеров угол из значений
         const rotationMap = getRotation(objectNameToFollow, diceEge);
-        console.log(rotationMap);
+        
         const euler = new THREE.Euler(rotationMap[0], rotationMap[1],rotationMap[2], 'XYZ'); // 'XYZ' - порядок вращения, можно менять
         // Преобразуем Эйлеров угол в матрицу вращения
         initialRotationMatrix.makeRotationFromEuler(euler);
@@ -259,11 +317,12 @@ export class GLTFSceneManager {
 
         switch (command) {
             case 'play':
+                     this._clearWrappers();
                     this.createWrapper('Dice_1',this.redDice);
                     this.createWrapper('Dice_2',this.yellowDice);
 
                      if (this.activeAction && this.activeAction !== targetAction ) {
-                    this.activeAction.fadeOut(0.3);
+                    //this.activeAction.fadeOut(0.3);
                     }
                     targetAction.reset();
                     targetAction.setLoop(loopMode, loop ? repetitions : 1);
@@ -280,7 +339,8 @@ export class GLTFSceneManager {
                 }
                 break;
             case 'stop':
-                targetAction.fadeOut(0.3).stop();
+                 //this._clearWrappers();
+               // targetAction.fadeOut(0.3).stop();
                 if (this.activeAction === targetAction) {
                     this.activeAction = null;
                 }
@@ -291,6 +351,11 @@ export class GLTFSceneManager {
             default:
                 console.warn(`Неизвестная команда для анимации: ${command}`);
         }
+    }
+
+     randomizeDice() {
+        this.redDice = Math.floor(Math.random() * 6) + 1;
+        this.yellowDice = Math.floor(Math.random() * 6) + 1;
     }
 
     playAnimationByName(name, loop = true, loopMode = THREE.LoopRepeat, repetitions = Infinity) {
@@ -357,6 +422,6 @@ function getRotation(name, value) {
     };
 
     const dice = rotations[name];
-    if (!dice) return [0, 0, 0]; // Возвращаем значение по умолчанию, если имя кубика не найдено
-    return dice.get(value) || [0, 0, 0]; // Возвращаем значение по умолчанию, если значение не найдено
+    if (!dice) return [0, 0, 0]; 
+    return dice.get(value) || [0, 0, 0]; 
 }

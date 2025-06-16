@@ -4,7 +4,7 @@ import * as THREE from 'three'; // Для доступа к THREE.LoopRepeat и 
 
 
 //const MODEL_PATH = '/model.gltf';     
-const MODEL_PATH = '/Dices_Anim_2.gltf';     
+const MODEL_PATH = 'Dices_Anim_2.gltf';     
 const TARGET_ANIMATION_NAME = 'animation_0';  
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
@@ -36,7 +36,7 @@ const sceneManager = new GLTFSceneManager(
             // Параметры: command, loop, loopMode, repetitions
             window.addEventListener('click', function(event) {
            
-                console.log("sd")
+                managerInstance.randomizeDice()
                 managerInstance.controlTargetAnimation('play', false, THREE.LoopOnce, Infinity);
             
             });
