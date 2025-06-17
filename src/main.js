@@ -31,7 +31,7 @@ const sceneManager = new GLTFSceneManager(
 
 // Тестовый кейс по клику (ИСПОЛЬЗОВАТЬ В СВОЕЙ ЛОГИКЕ), !!! managerInstance  для использования внутри калбека !!!
 window.addEventListener('click', function(event) {
-    sceneManager.setDice(1,4) // < params (желтый, красный)
+    sceneManager.setDice(2,1) // < params (желтый, красный)
     sceneManager.controlTargetAnimation('play', false, THREE.LoopOnce, Infinity);
             
  }); 
