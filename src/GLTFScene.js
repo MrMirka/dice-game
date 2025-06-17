@@ -46,7 +46,7 @@ export class GLTFSceneManager {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        //this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.container.appendChild(this.renderer.domElement);
 
         gsap.ticker.add(() => {
@@ -89,8 +89,8 @@ export class GLTFSceneManager {
             });
 
             // Создаем материалы
-            const yellowMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Желтый
-            const redMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });   // Красный
+            const yellowMaterial = new THREE.MeshStandardMaterial({ color: 0xE59F43 }); // Желтый
+            const redMaterial = new THREE.MeshStandardMaterial({ color: 0xF4614F });   // Красный
 
             // Находим объекты по имени
             const dice1 = this.model.getObjectByName("Dice_1");
