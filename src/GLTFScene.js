@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { gsap } from 'gsap';
 
 export class GLTFSceneManager {
     constructor(containerId, modelPath, animationName, onLoadedCallback = null) {
@@ -22,8 +23,6 @@ export class GLTFSceneManager {
         this.animations = {};
         this.activeAction = null;
         this.clock = new THREE.Clock();
-        
-        this.trackedObjects = [];
 
         this.diceAtlasTexture = null;
         this.diceAlphaTexture = null;
@@ -38,7 +37,6 @@ export class GLTFSceneManager {
     _init() {
        
         this.scene = new THREE.Scene();
-        // this.scene.background = new THREE.Color(0x282c34);
         this.camera = new THREE.PerspectiveCamera(75, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
         
         this.camera.position.set(0, 1.4, 0); 
@@ -50,6 +48,11 @@ export class GLTFSceneManager {
         this.renderer.shadowMap.enabled = true;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.container.appendChild(this.renderer.domElement);
+
+        gsap.ticker.add(() => {
+             const delta = this.clock.getDelta(); 
+        this._animate(delta);
+        });
         
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         this.scene.add(ambientLight);
@@ -57,10 +60,6 @@ export class GLTFSceneManager {
         directionalLight.position.set(5, 10, 7);
         directionalLight.castShadow = true;
         this.scene.add(directionalLight);
-
-        //this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        //this.controls.enableDamping = true;
-        //this.controls.target.set(0, 0.5, 0);
        
         const loadingManager = new THREE.LoadingManager();
 
@@ -69,12 +68,6 @@ export class GLTFSceneManager {
 
             this.createWrapper('Dice_1',this.redDice);
             this.createWrapper('Dice_2',this.yellowDice);
-            
-           /* if (this.targetAnimationName) {
-                this.playAnimationByName(this.targetAnimationName);
-            } */
-
-            this._animate();
 
             if (this.onLoadedCallback) {
                 this.onLoadedCallback(this, null);
@@ -95,9 +88,6 @@ export class GLTFSceneManager {
                 }
             });
 
-           // ==========================================================
-            // НАЗНАЧАЕМ ЦВЕТА
-            // ==========================================================
             // Создаем материалы
             const yellowMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Желтый
             const redMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });   // Красный
@@ -106,11 +96,12 @@ export class GLTFSceneManager {
             const dice1 = this.model.getObjectByName("Dice_1");
             const dice2 = this.model.getObjectByName("Dice_2");
             
+            
             // Применяем желтый материал ко всем мешам внутри объекта "Dice_1"
             if (dice1) {
                 dice1.traverse((child) => {
                     if (child.isMesh) {
-                        child.material = yellowMaterial;
+                        child.material = redMaterial;
                     }
                 });
             } else {
@@ -121,18 +112,16 @@ export class GLTFSceneManager {
             if (dice2) {
                 dice2.traverse((child) => {
                     if (child.isMesh) {
-                        child.material = redMaterial;
+                        child.material = yellowMaterial;
                     }
                 });
             } else {
                  console.warn('Объект "Dice_2" не найден в GLTF модели.');
             }
-            // ==========================================================
+            
             
             this.scene.add(this.model);
 
-           
-            // Начальная настройка камеры теперь является основной.
             
             if (gltf.animations && gltf.animations.length) {
                 this.mixer = new THREE.AnimationMixer(this.model);
@@ -156,53 +145,45 @@ export class GLTFSceneManager {
 
         window.addEventListener('resize', this._onWindowResize.bind(this), false);
     }
-    
-    _animate() {
-        requestAnimationFrame(this._animate.bind(this));
-        const delta = this.clock.getDelta();
-        if (this.mixer) {
-            this.mixer.update(delta);
-        }
-        
-       
-        for (const item of this.trackedObjects) {
-            item.target.updateMatrixWorld(true);
 
-            // Умножаем матрицу анимации на матрицу начального вращения
-            item.wrapper.matrix.multiplyMatrices(
-                item.target.matrixWorld, 
-                item.initialRotationMatrix
-            );
-        }
 
-        //if (this.controls) this.controls.update();
+    _animate(delta) {
+        if (this.mixer) this.mixer.update(delta);
         this.renderer.render(this.scene, this.camera);
     }
 
-    _clearWrappers() {
-        for (const item of this.trackedObjects) {
-            // Удаляем обертку из сцены
-            this.scene.remove(item.wrapper);
-            // Очищаем геометрию и материалы для предотвращения утечек памяти
-            item.wrapper.traverse((object) => {
-                if (object.isMesh) {
-                    if (object.geometry) object.geometry.dispose();
-                    if (object.material) {
-                        if (object.material.map) object.material.map.dispose();
-                        if (object.material.alphaMap) object.material.alphaMap.dispose();
-                        object.material.dispose();
+     _clearWrappers() {
+        const parentNames = ['Dice_1', 'Dice_2'];
+
+        parentNames.forEach(name => {
+            const parentObject = this.model.getObjectByName(name);
+            
+            if (parentObject) {
+                for (let i = parentObject.children.length - 1; i >= 0; i--) {
+                    const child = parentObject.children[i];
+                    
+                    parentObject.remove(child);
+
+                    if (child.isGroup) {
+                        child.traverse((object) => {
+                            if (object.isMesh) {
+                                if (object.geometry) object.geometry.dispose();
+                                if (object.material) {
+                                    if (object.material.map) object.material.map.dispose();
+                                    if (object.material.alphaMap) object.material.alphaMap.dispose();
+                                    object.material.dispose();
+                                }
+                            }
+                        });
                     }
                 }
-            });
-        }
-        // Опустошаем массив
-        this.trackedObjects = [];
-        console.log("Старые обертки удалены.");
+            }
+        });
+        
     }
+ 
 
-
-    createWrapper(objectNameToFollow, diceEge) {
-        console.log(diceEge)
+     createWrapper(objectNameToFollow, diceEge) {
         if (!this.model || !this.diceAtlasTexture || !this.diceAlphaTexture) {
             console.error("Модель или текстуры (основная или альфа) еще не загружены.");
             return;
@@ -245,7 +226,7 @@ export class GLTFSceneManager {
             });
         };
 
-        let sTMP = 0.203;
+        let sTMP = 0.203; // Скейл обертки
 
         const frontFace = new THREE.Mesh(new THREE.PlaneGeometry(sTMP, sTMP), createFace(2));
         frontFace.position.z = sTMP / 2;
@@ -282,25 +263,103 @@ export class GLTFSceneManager {
         // Создаем Эйлеров угол из значений
         const rotationMap = getRotation(objectNameToFollow, diceEge);
         
-        const euler = new THREE.Euler(rotationMap[0], rotationMap[1],rotationMap[2], 'XYZ'); // 'XYZ' - порядок вращения, можно менять
+        const euler = new THREE.Euler(rotationMap[0], rotationMap[1],rotationMap[2], 'XYZ');
         // Преобразуем Эйлеров угол в матрицу вращения
         initialRotationMatrix.makeRotationFromEuler(euler);
 
         wrapper.matrixAutoUpdate = false;
-        
-        this.scene.add(wrapper);
+        wrapper.matrix.copy(initialRotationMatrix);
+        targetObject.add(wrapper)
+    } 
 
-        // Сохраняем и обертку, и цель, и матрицу начального вращения
-        this.trackedObjects.push({ 
-            wrapper: wrapper, 
-            target: targetObject,
-            initialRotationMatrix: initialRotationMatrix 
+      createOrUpdateWrapper(objectNameToFollow, diceEge) {
+        if (!this.model || !this.diceAtlasTexture || !this.diceAlphaTexture) {
+            console.error("Модель или текстуры еще не загружены.");
+            return;
+        }
+        
+        const targetObject = this.model.getObjectByName(objectNameToFollow);
+        if (!targetObject) {
+            console.warn(`Объект "${objectNameToFollow}" не найден.`);
+            return;
+        }
+
+        // --- ЛОГИКА ОБНОВЛЕНИЯ ---
+        if (this.wrappers.has(objectNameToFollow)) {
+            const wrapper = this.wrappers.get(objectNameToFollow);
+            
+            const rotationMap = getRotation(objectNameToFollow, diceEge);
+            const euler = new THREE.Euler(rotationMap[0], rotationMap[1], rotationMap[2], 'XYZ');
+            
+            // Просто обновляем матрицу существующей обертки
+            wrapper.matrix.makeRotationFromEuler(euler);
+            
+            console.log(`Обертка для "${objectNameToFollow}" обновлена.`);
+            return;
+        }
+
+        // --- ЛОГИКА СОЗДАНИЯ (выполняется только раз) ---
+        const wrapper = new THREE.Group();
+
+        const u_step = 1 / 3;
+        const v_step = 1 / 4;
+        const uv_map = {
+            1: [1*u_step, 3*v_step, 2*u_step, 4*v_step], 2: [1*u_step, 2*v_step, 2*u_step, 3*v_step],
+            3: [1*u_step, 1*v_step, 2*u_step, 2*v_step], 4: [1*u_step, 0*v_step, 2*u_step, 1*v_step],
+            5: [0*u_step, 2*v_step, 1*u_step, 3*v_step], 6: [2*u_step, 2*v_step, 3*u_step, 3*v_step]
+        };
+        
+        const createFace = (faceNumber) => {
+            const [u_min, v_min, u_max, v_max] = uv_map[faceNumber];
+            const colorTexture = this.diceAtlasTexture.clone();
+            colorTexture.needsUpdate = true;
+            colorTexture.repeat.set(u_max - u_min, v_max - v_min);
+            colorTexture.offset.set(u_min, v_min);
+            const alphaTexture = this.diceAlphaTexture.clone();
+            alphaTexture.needsUpdate = true;
+            alphaTexture.repeat.set(u_max - u_min, v_max - v_min);
+            alphaTexture.offset.set(u_min, v_min);
+            return new THREE.MeshBasicMaterial({
+                map: colorTexture,
+                alphaMap: alphaTexture, 
+                transparent: true,
+            });
+        };
+
+        let sTMP = 0.203;
+
+        const faces = [
+            { pos: [0, 0, sTMP / 2], rot: [0, 0, 0], face: 2 },
+            { pos: [0, 0, -sTMP / 2], rot: [0, Math.PI, 0], face: 5 },
+            { pos: [0, sTMP / 2, 0], rot: [-Math.PI / 2, 0, 0], face: 1 },
+            { pos: [0, -sTMP / 2, 0], rot: [Math.PI / 2, 0, 0], face: 6 },
+            { pos: [sTMP / 2, 0, 0], rot: [0, Math.PI / 2, 0], face: 3 },
+            { pos: [-sTMP / 2, 0, 0], rot: [0, -Math.PI / 2, 0], face: 4 }
+        ];
+
+        faces.forEach(faceData => {
+            const faceMesh = new THREE.Mesh(new THREE.PlaneGeometry(sTMP, sTMP), createFace(faceData.face));
+            faceMesh.position.set(...faceData.pos);
+            faceMesh.rotation.set(...faceData.rot);
+            wrapper.add(faceMesh);
         });
 
-        console.log(`Обертка из 6 граней создана и отслеживает объект "${objectNameToFollow}".`);
-    }
+        const initialRotationMatrix = new THREE.Matrix4();
+        const rotationMap = getRotation(objectNameToFollow, diceEge);
+        const euler = new THREE.Euler(rotationMap[0], rotationMap[1], rotationMap[2], 'XYZ');
+        initialRotationMatrix.makeRotationFromEuler(euler);
 
-    _onWindowResize() {
+        wrapper.matrixAutoUpdate = false;
+        wrapper.matrix.copy(initialRotationMatrix);
+        
+        targetObject.add(wrapper);
+        
+        // Сохраняем ссылку на созданную обертку для будущих обновлений
+        this.wrappers.set(objectNameToFollow, wrapper);
+
+        console.log(`Обертка для "${objectNameToFollow}" создана.`);
+    }
+        _onWindowResize() {
         if (!this.container) return;
         this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
         this.camera.updateProjectionMatrix();
@@ -317,7 +376,7 @@ export class GLTFSceneManager {
 
         switch (command) {
             case 'play':
-                     this._clearWrappers();
+                    this._clearWrappers();
                     this.createWrapper('Dice_1',this.redDice);
                     this.createWrapper('Dice_2',this.yellowDice);
 
@@ -327,7 +386,6 @@ export class GLTFSceneManager {
                     targetAction.reset();
                     targetAction.setLoop(loopMode, loop ? repetitions : 1);
                     targetAction.clampWhenFinished = !loop;
-                    //targetAction.fadeIn(0.3).play();
                     targetAction.play()
                     this.activeAction = targetAction;
                 
@@ -339,8 +397,6 @@ export class GLTFSceneManager {
                 }
                 break;
             case 'stop':
-                 //this._clearWrappers();
-               // targetAction.fadeOut(0.3).stop();
                 if (this.activeAction === targetAction) {
                     this.activeAction = null;
                 }
@@ -352,27 +408,16 @@ export class GLTFSceneManager {
                 console.warn(`Неизвестная команда для анимации: ${command}`);
         }
     }
-
-     randomizeDice() {
+    // Рандомное занчание купиков
+    randomizeDice() {
         this.redDice = Math.floor(Math.random() * 6) + 1;
         this.yellowDice = Math.floor(Math.random() * 6) + 1;
     }
 
-    playAnimationByName(name, loop = true, loopMode = THREE.LoopRepeat, repetitions = Infinity) {
-        if (this.activeAction) {
-            this.activeAction.fadeOut(0.3);
-        }
-
-        const newAction = this.animations[name];
-        if (newAction) {
-            newAction.reset()
-                     .setLoop(loopMode, loop ? repetitions : 1)
-                     .clampWhenFinished = !loop;
-            newAction.fadeIn(0.3).play();
-            this.activeAction = newAction;
-        } else {
-            console.warn(`Анимация "${name}" не найдена.`);
-        }
+    // Устанавливаем значания для кубов
+    setDice(yellow, red) {
+        this.redDice = Math.min(6, Math.max(1, red));
+        this.yellowDice = Math.min(6, Math.max(1, yellow));
     }
 
     destroy() {
@@ -395,7 +440,6 @@ export class GLTFSceneManager {
                 }
             });
         }
-        this.trackedObjects = [];
         console.log("GLTFSceneManager destroyed");
     }
 }
