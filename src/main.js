@@ -1,11 +1,15 @@
 import { GLTFSceneManager } from './GLTFScene.js';
 import * as THREE from 'three'; 
+import GUI from 'lil-gui';
 
 
     
 const MODEL_PATH = 'Dices_Anim_2.gltf';     
 const TARGET_ANIMATION_NAME = 'animation_0';  
 
+const gui = new GUI();
+gui.title("Настройки Сцены");
+gui.close();
 
 const sceneManager = new GLTFSceneManager(
     'app',                  
@@ -29,9 +33,11 @@ const sceneManager = new GLTFSceneManager(
     }
 );
 
+sceneManager.setupGUI(gui)
+
 // Тестовый кейс по клику (ИСПОЛЬЗОВАТЬ В СВОЕЙ ЛОГИКЕ), !!! managerInstance  для использования внутри калбека !!!
 window.addEventListener('click', function(event) {
-    sceneManager.setDice(2,1) // < params (желтый, красный)
+    sceneManager.setDice(2,3) // < params (желтый, красный)
     sceneManager.controlTargetAnimation('play', false, THREE.LoopOnce, Infinity);
             
  }); 
