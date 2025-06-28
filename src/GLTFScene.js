@@ -293,10 +293,15 @@ export class GLTFSceneManager {
             alphaTexture.needsUpdate = true;
             alphaTexture.repeat.set(u_max - u_min, v_max - v_min);
             alphaTexture.offset.set(u_min, v_min);
+
+            let alphaTextureGenerate = new THREE.CanvasTexture(createDotsTexture(769, 1024, 27)).clone();
+				alphaTextureGenerate.needsUpdate = true;
+            alphaTextureGenerate.repeat.set(u_max - u_min, v_max - v_min);
+            alphaTextureGenerate.offset.set(u_min, v_min);
             
             return new THREE.MeshBasicMaterial({
                 map: colorTexture,
-                alphaMap: alphaTexture, 
+                alphaMap: alphaTextureGenerate, 
                 transparent: true,
             });
         };
@@ -396,8 +401,8 @@ export class GLTFSceneManager {
     }
     // Рандомное значания для кубов
     randomizeDice() {
-        this.redDice = Math.floor(Math.random() * 6) + 1;
-        this.yellowDice = Math.floor(Math.random() * 6) + 1;
+        this.redDice = Math.floor(Math.random() * 6) + 15;
+        this.yellowDice = Math.floor(Math.random() * 6) + 15;
     }
 
     // Устанавливаем значания для кубов
@@ -565,4 +570,54 @@ function getRotation(name, value) {
     const dice = rotations[name];
     if (!dice) return [0, 0, 0]; 
     return dice.get(value) || [0, 0, 0]; 
+}
+
+
+function createDotsTexture(width = 769, height = 1024, dotRadius = 56) {
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+
+    context.fillStyle = 'rgb(0, 0, 0)';
+    context.fillRect(0, 0, width, height);
+
+    context.fillStyle = 'rgb(255, 255, 255)';
+
+    const dotRelativePositions = [
+        { x: 384.5, y: 128 },
+        { x: 57.5, y: 312.5 },
+        { x: 200.4, y: 312.5 },
+        { x: 312.9, y: 312.5 },
+        { x: 569.5, y: 312.5 },
+        { x: 712.4, y: 312.5 },
+        { x: 129, y: 384 },
+        { x: 569.5, y: 384 },
+        { x: 712.5, y: 384 },
+        { x: 57.5, y: 455.5 },
+        { x: 200.5, y: 455.5 },
+        { x: 456, y: 455.5 },
+        { x: 569.5, y: 455.5 },
+        { x: 712.5, y: 455.5 },
+        { x: 313.5, y: 568.5 },
+        { x: 385, y: 640 },
+        { x: 456.5, y: 711.5 },
+        { x: 313.5, y: 824.5 },
+        { x: 456.4, y: 824.5 },
+        { x: 313.5, y: 967.5 },
+        { x: 456.5, y: 967.5 },
+        
+       
+    ];
+
+    
+    dotRelativePositions.forEach(pos => {
+        context.beginPath();
+        context.arc(pos.x , pos.y , dotRadius, 0, Math.PI * 2);
+        context.fill();
+    });
+
+    return canvas;
 }

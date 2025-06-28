@@ -37,7 +37,7 @@ sceneManager.setupGUI(gui)
 
 // Тестовый кейс по клику (ИСПОЛЬЗОВАТЬ В СВОЕЙ ЛОГИКЕ), !!! managerInstance  для использования внутри калбека !!!
 window.addEventListener('click', function(event) {
-    sceneManager.setDice(2,3) // < params (желтый, красный)
+    sceneManager.setDice(1,1) // < params (желтый, красный)
     sceneManager.controlTargetAnimation('play', false, THREE.LoopOnce, Infinity);
             
  }); 
